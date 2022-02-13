@@ -11,9 +11,52 @@ black = "^22.1.0"
 mypy = "^0.931"
 flake8 = "^4.0.1"
 isort = "^5.10.1"
+pre-commit = "^2.17.0"
 
 [tool.poetry.dev-dependencies]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  # The following are specific to Black, you probably don't want those.
+  | blib2to3
+  | tests/data
+  | profiling
+  | lists/static
+)/
+'''
+
+[tool.pydocstyle]
+convention = "google"
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+disallow_untyped_defs = true
+disallow_any_unimported = true
+no_implicit_optional = true
+check_untyped_defs = true
+warn_return_any = true
+show_error_codes = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+python_files =  ["test.py", "test_*.py", "*_tests.py"]
+addopts = "-rP"
