@@ -1,4 +1,4 @@
-"""Models of the project."""
+"""Models of the domain."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ from datetime import date
 from typing import Any, Iterable, Optional, Set
 
 
-@dataclass(frozen=True)
+@dataclass(unsafe_hash=True)
 class OrderLine:
     """Model of an order line, this corresponds to a value object."""
 
-    orderid: str
+    order_id: str
     sku: str
     qty: int
 

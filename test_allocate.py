@@ -10,7 +10,7 @@ def create_batch_and_line(
 ) -> Tuple[Batch, OrderLine]:
     return (
         Batch(ref="batch-001", sku=sku, qty=batch_qty, eta=date.today()),
-        OrderLine(orderid="order-123", sku=sku, qty=line_qty),
+        OrderLine(order_id="order-123", sku=sku, qty=line_qty),
     )
 
 

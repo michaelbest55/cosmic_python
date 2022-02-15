@@ -12,6 +12,8 @@ mypy = "^0.931"
 flake8 = "^4.0.1"
 isort = "^5.10.1"
 pre-commit = "^2.17.0"
+SQLAlchemy = "^1.4.31"
+sqlalchemy-stubs = "^0.4"
 
 [tool.poetry.dev-dependencies]
 
@@ -49,6 +51,7 @@ convention = "google"
 profile = "black"
 
 [tool.mypy]
+plugins = "sqlmypy"
 disallow_untyped_defs = true
 disallow_any_unimported = true
 no_implicit_optional = true
