@@ -11,7 +11,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, clear_mappers, sessionmaker
 
 import config
-from orm import metadata, start_mappers
+from adapters.orm import metadata, start_mappers
 
 
 @pytest.fixture

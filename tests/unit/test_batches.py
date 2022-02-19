@@ -3,7 +3,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from model import Batch, OrderLine, OutOfStock, allocate
+from domain.model import Batch, OrderLine, OutOfStock, allocate
 
 
 def test_allocation_to_warehouse_stock_prefered_to_shipment_batch() -> None:

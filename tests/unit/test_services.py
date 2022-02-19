@@ -3,9 +3,9 @@ from typing import List
 
 import pytest
 
-import model
-import services
-from repository import AbstractRepository
+import domain.model as model
+import service_layer.services as services
+from adapters.repository import AbstractRepository
 
 
 class FakeRepository(AbstractRepository):

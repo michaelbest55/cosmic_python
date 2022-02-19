@@ -2,7 +2,7 @@
 from datetime import date
 from typing import Tuple
 
-from model import Batch, OrderLine
+from domain.model import Batch, OrderLine
 
 
 def create_batch_and_line(
