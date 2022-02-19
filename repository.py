@@ -1,5 +1,6 @@
 """Implementations of the repositories for the domain."""
 import abc
+from typing import Any, List
 
 from sqlalchemy.orm.session import Session
 
@@ -25,6 +26,10 @@ class AbstractRepository(abc.ABC):
         Args:
             reference: reference of the batch to retrieve
         """
+        raise NotImplementedError
+
+    def list(self) -> Any:
+        """List all of the batches in the repository."""
         raise NotImplementedError
 
 
@@ -54,3 +59,11 @@ class SqlAlchemyRepository(AbstractRepository):
             reference: str with the reference of the batch
         """
         return self.session.query(model.Batch).filter_by(reference=reference).one()
+
+    def list(self) -> List[model.Batch]:
+        """Get a list of all the batches from the repository.
+
+        Returns:
+            list of batch objects
+        """
+        return self.session.query(model.Batch).all()
