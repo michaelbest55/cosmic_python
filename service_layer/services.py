@@ -1,5 +1,6 @@
 """Definition of service layer functions."""
-from typing import List, Protocol
+from datetime import date
+from typing import List, Optional, Protocol
 
 import domain.model as model
 from adapters.repository import AbstractRepository
@@ -39,8 +40,33 @@ def is_valid_sku(sku: str, batches: List[model.Batch]) -> bool:
     return sku in {b.sku for b in batches}
 
 
+def add_batch(
+    ref: str,
+    sku: str,
+    qty: int,
+    eta: Optional[date],
+    repo: AbstractRepository,
+    session: SessionProtocol,
+) -> None:
+    """Service layer function to add a batch given the input necessary.
+
+    This decouples the service-layer functions from the domain.
+
+    Args:
+        ref: string with the batch reference
+        sku: str with the stock keeping unit
+        qty: amount of units for the batch
+        eta: date of arrival at warehouse
+        repo: repository abstraction for saving the data
+        session: How to commit transactions in the repo to the data layer
+
+    """
+    repo.add(model.Batch(ref, sku, qty, eta))
+    session.commit()
+
+
 def allocate(
-    line: model.OrderLine, repo: AbstractRepository, session: SessionProtocol
+    orderid: str, sku: str, qty: int, repo: AbstractRepository, session: SessionProtocol
 ) -> str:
     """Allocate an orderline to an appropriate batch.
 
@@ -57,6 +83,7 @@ def allocate(
         batches of the repo
     """
     batches = repo.list()
+    line = model.OrderLine(orderid, sku, qty)
     if not is_valid_sku(line.sku, batches):
         raise InvalidSku(f"Invalid sku {line.sku}")
     batchref = model.allocate(line, batches)
