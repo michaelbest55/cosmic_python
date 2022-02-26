@@ -4,4 +4,4 @@ max-complexity = 18
 select = A,B,C,D,E,F,W,T4,B9
 docstring-convention = google
 per-file-ignores =
-    test*.py:D103
+    *test*.py:D103

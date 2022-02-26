@@ -2,8 +2,8 @@
 from datetime import date
 from typing import List, Optional, Protocol
 
-import domain.model as model
-from adapters.repository import AbstractRepository
+import app.domain.model as model
+from app.service_layer import unit_of_work
 
 
 class InvalidSku(Exception):
@@ -45,8 +45,7 @@ def add_batch(
     sku: str,
     qty: int,
     eta: Optional[date],
-    repo: AbstractRepository,
-    session: SessionProtocol,
+    uow: unit_of_work.AbstractUnitOfWork,
 ) -> None:
     """Service layer function to add a batch given the input necessary.
 
@@ -57,23 +56,30 @@ def add_batch(
         sku: str with the stock keeping unit
         qty: amount of units for the batch
         eta: date of arrival at warehouse
-        repo: repository abstraction for saving the data
-        session: How to commit transactions in the repo to the data layer
+        ouw: class that abstracts atomic operations related to i/o of data
 
+    Returns:
+        None
     """
-    repo.add(model.Batch(ref, sku, qty, eta))
-    session.commit()
+    with uow:
+        uow.batches.add(model.Batch(ref, sku, qty, eta))
+        uow.commit()
 
 
 def allocate(
-    orderid: str, sku: str, qty: int, repo: AbstractRepository, session: SessionProtocol
+    orderid: str,
+    sku: str,
+    qty: int,
+    uow: unit_of_work.AbstractUnitOfWork,
 ) -> str:
     """Allocate an orderline to an appropriate batch.
 
     Args:
-        line: A orderline model
-        repo: a repository from which to get batches
-        session: a database session
+        ref: string with the batch reference
+        sku: str with the stock keeping unit
+        qty: amount of units for the batch
+        eta: date of arrival at warehouse
+        ouw: class that abstracts atomic operations related to i/o of data
 
     Returns:
         batchref: batchref of the batch to which the line was allocated
@@ -82,10 +88,11 @@ def allocate(
         InvalidSku: in the case that the sku of line is not found in any of the
         batches of the repo
     """
-    batches = repo.list()
     line = model.OrderLine(orderid, sku, qty)
-    if not is_valid_sku(line.sku, batches):
-        raise InvalidSku(f"Invalid sku {line.sku}")
-    batchref = model.allocate(line, batches)
-    session.commit()
+    with uow:
+        batches = uow.batches.list()
+        if not is_valid_sku(line.sku, batches):
+            raise InvalidSku(f"Invalid sku {line.sku}")
+        batchref = model.allocate(line, batches)
+        uow.commit()
     return batchref

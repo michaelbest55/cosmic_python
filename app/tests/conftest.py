@@ -1,7 +1,7 @@
 """Pytest fixtures for running sqlite."""
 import time
 from pathlib import Path
-from typing import Callable, Generator, List, Optional, Tuple
+from typing import Callable, Generator, List, Optional, Tuple, cast
 
 import pytest
 import requests
@@ -10,8 +10,8 @@ from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, clear_mappers, sessionmaker
 
-import config
-from adapters.orm import metadata, start_mappers
+import app.config as config
+from app.adapters.orm import metadata, start_mappers
 
 
 @pytest.fixture
@@ -23,14 +23,15 @@ def in_memory_db() -> Engine:
 
 
 @pytest.fixture
-def session(in_memory_db: Engine) -> Generator[sessionmaker, None, None]:
-    """Fixture for the tests to create a session in the database.
-
-    Because this gets run in each test function, a clean database is used for the test.
-    """
+def session_factory(in_memory_db: Engine) -> Generator[sessionmaker, None, None]:
     start_mappers()
-    yield sessionmaker(bind=in_memory_db)()
+    yield sessionmaker(bind=in_memory_db)
     clear_mappers()
+
+
+@pytest.fixture
+def session(session_factory: sessionmaker) -> Session:
+    return cast(Session, session_factory())
 
 
 def wait_for_postgres_to_come_up(engine: Engine) -> Connection:

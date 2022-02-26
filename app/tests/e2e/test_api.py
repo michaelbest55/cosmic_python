@@ -5,7 +5,7 @@ from typing import Optional
 import pytest
 import requests
 
-import config
+import app.config as config
 
 
 def random_suffix() -> str:

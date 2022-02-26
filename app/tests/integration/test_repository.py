@@ -1,8 +1,8 @@
 """Unit tests for the SqlAlchemyRepository."""
 from sqlalchemy.orm.session import Session
 
-import domain.model as model
-from adapters.repository import SqlAlchemyRepository
+import app.domain.model as model
+from app.adapters.repository import SqlAlchemyRepository
 
 
 def test_repository_can_save_a_batch(session: Session) -> None:

@@ -3,9 +3,10 @@ from typing import List
 
 import pytest
 
-import domain.model as model
-import service_layer.services as services
-from adapters.repository import AbstractRepository
+import app.domain.model as model
+import app.service_layer.services as services
+import app.service_layer.unit_of_work as unit_of_work
+from app.adapters.repository import AbstractRepository
 
 
 class FakeRepository(AbstractRepository):
@@ -47,6 +48,23 @@ class FakeRepository(AbstractRepository):
         return list(self._batches)
 
 
+class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
+    """Fake unit of work for testing."""
+
+    def __init__(self) -> None:
+        """Init function."""
+        self.batches = FakeRepository([])
+        self.committed = False
+
+    def commit(self) -> None:
+        """How to commit."""
+        self.committed = True
+
+    def rollback(self) -> None:
+        """How to rollback."""
+        pass
+
+
 class FakeSession:
     """Fake class that models a database session."""
 
@@ -57,34 +75,30 @@ class FakeSession:
         self.committed = True
 
 
-def test_commits() -> None:
-    repo, session = FakeRepository([]), FakeSession()
-    services.add_batch("b1", "OMINOUS-MIRROR", 100, None, repo, session)
-
-    services.allocate("o1", "OMINOUS-MIRROR", 10, repo, session)
-    assert session.committed is True
-
-
-def test_returns_allocations() -> None:
-    repo, session = FakeRepository([]), FakeSession()
-    services.add_batch("b1", "COMPLICATED-LAMP", 100, None, repo, session)
-
-    result = services.allocate(
-        "o1", "COMPLICATED-LAMP", 10, repo, session=FakeSession()
-    )
-    assert result == "b1"
+def test_add_batch() -> None:
+    uow = FakeUnitOfWork()
+    services.add_batch("b1", "CRUNCHY-ARMCHAIR", 100, None, uow)
+    assert uow.batches.get("b1") is not None
+    assert uow.committed
 
 
-def test_error_for_invalid_sku() -> None:
-    batch = model.Batch("b1", "AREALSKU", 100, eta=None)
-    repo = FakeRepository([batch])
+def test_allocate_returns_allocation() -> None:
+    uow = FakeUnitOfWork()
+    services.add_batch("batch1", "COMPLICATED-LAMP", 100, None, uow)
+    result = services.allocate("o1", "COMPLICATED-LAMP", 10, uow)
+    assert result == "batch1"
+
+
+def test_allocate_errors_for_invalid_sku() -> None:
+    uow = FakeUnitOfWork()
+    services.add_batch("b1", "AREALSKU", 100, None, uow)
 
     with pytest.raises(services.InvalidSku, match="Invalid sku NONEXISTENTSKU"):
-        services.allocate("o1", "NONEXISTENTSKU", 10, repo, session=FakeSession())
+        services.allocate("o1", "NONEXISTENTSKU", 10, uow)
 
 
-def test_add_batch() -> None:
-    repo, session = FakeRepository([]), FakeSession()
-    services.add_batch("b1", "CRUNCHY-ARMCHAIR", 100, None, repo, session)
-    assert repo.get("b1") is not None
-    assert session.committed
+def test_allocate_commits() -> None:
+    uow = FakeUnitOfWork()
+    services.add_batch("b1", "OMINOUS-MIRROR", 100, None, uow)
+    services.allocate("o1", "OMINOUS-MIRROR", 10, uow)
+    assert uow.committed

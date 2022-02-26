@@ -6,11 +6,11 @@ from flask import Flask, request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-import adapters.orm as orm
-import adapters.repository as repository
-import config
-import domain.model as model
-import service_layer.services as services
+import app.adapters.orm as orm
+import app.config as config
+import app.domain.model as model
+import app.service_layer.services as services
+from app.service_layer import unit_of_work
 
 orm.start_mappers()
 get_session = sessionmaker(bind=create_engine(config.get_postgres_uri()))
@@ -20,8 +20,6 @@ app = Flask(__name__)
 @app.route("/allocate", methods=["POST"])
 def allocate_endpoint() -> Tuple[Dict[str, str], int]:
     """Endpoint for allocating an orderline to a batch."""
-    session = get_session()
-    repo = repository.SqlAlchemyRepository(session)
     request_params_dict = cast(dict, request.json)
     try:
         orderid = request_params_dict["orderid"]
@@ -36,7 +34,9 @@ def allocate_endpoint() -> Tuple[Dict[str, str], int]:
         }, 400
 
     try:
-        batchref = services.allocate(orderid, sku, qty, repo, session)
+        batchref = services.allocate(
+            orderid, sku, qty, unit_of_work.SqlAlchemyUnitOfWork()
+        )
     except (model.OutOfStock, services.InvalidSku) as e:
         return {"message": str(e)}, 400
 
@@ -49,8 +49,6 @@ def add_batch() -> Tuple[Dict[str, str], int]:
 
     Note: this is probably not a good name for a rest api.
     """
-    session = get_session()
-    repo = repository.SqlAlchemyRepository(session)
     request_params_dict = cast(dict, request.json)
     try:
         ref = request_params_dict["ref"]
@@ -72,7 +70,6 @@ def add_batch() -> Tuple[Dict[str, str], int]:
         sku,
         qty,
         eta,
-        repo,
-        session,
+        unit_of_work.SqlAlchemyUnitOfWork(),
     )
     return {"message": "OK"}, 201

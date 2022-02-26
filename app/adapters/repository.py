@@ -4,7 +4,7 @@ from typing import Any, List
 
 from sqlalchemy.orm.session import Session
 
-import domain.model as model
+import app.domain.model as model
 
 
 class AbstractRepository(abc.ABC):
