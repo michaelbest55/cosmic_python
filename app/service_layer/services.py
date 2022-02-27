@@ -1,6 +1,6 @@
 """Definition of service layer functions."""
 from datetime import date
-from typing import List, Optional, Protocol
+from typing import Optional, Protocol
 
 import app.domain.model as model
 from app.service_layer import unit_of_work
@@ -27,19 +27,6 @@ class SessionProtocol(Protocol):
         raise NotImplementedError
 
 
-def is_valid_sku(sku: str, batches: List[model.Batch]) -> bool:
-    """Check if sku belongs to any of the given batches.
-
-    Args:
-        sku: value to check
-        batches: list of batches to check
-
-    Returns:
-        true if sku is in any of the batches
-    """
-    return sku in {b.sku for b in batches}
-
-
 def add_batch(
     ref: str,
     sku: str,
@@ -62,7 +49,11 @@ def add_batch(
         None
     """
     with uow:
-        uow.batches.add(model.Batch(ref, sku, qty, eta))
+        product = uow.products.get(sku=sku)
+        if product is None:
+            product = model.Product(sku, batches=[])
+            uow.products.add(product)
+        product.batches.append(model.Batch(ref, sku, qty, eta))
         uow.commit()
 
 
@@ -90,9 +81,9 @@ def allocate(
     """
     line = model.OrderLine(orderid, sku, qty)
     with uow:
-        batches = uow.batches.list()
-        if not is_valid_sku(line.sku, batches):
+        product = uow.products.get(sku=line.sku)
+        if product is None:
             raise InvalidSku(f"Invalid sku {line.sku}")
-        batchref = model.allocate(line, batches)
+        batchref = product.allocate(line)
         uow.commit()
     return batchref

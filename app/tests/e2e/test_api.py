@@ -1,54 +1,14 @@
 """Tests for the flask api endpoints."""
-import uuid
 from typing import Optional
 
 import pytest
 import requests
 
 import app.config as config
+from app.tests.random_refs import random_batchref, random_orderid, random_sku
 
 
-def random_suffix() -> str:
-    """Function to get the first six characters of a uuid.
-
-    Returns: generated string
-    """
-    return uuid.uuid4().hex[:6]
-
-
-def random_sku(name: str = "") -> str:
-    """Sku that is randomly generated.
-
-    Args:
-        name: optional string to insert into generated sku
-
-    Returns: generated string
-    """
-    return f"sku-{name}-{random_suffix()}"
-
-
-def random_batchref(name: str = "") -> str:
-    """Reference to a fake batch that is randomly generated.
-
-    Args:
-        name: optional string to insert into generated batch
-
-    Returns: generated string
-    """
-    return f"batch-{name}-{random_suffix()}"
-
-
-def random_orderid(name: str = "") -> str:
-    """Orderid that is randomly generated.
-
-    Args:
-        name: optional string to insert into generated orderid
-
-    Returns: generated string
-    """
-    return f"order-{name}-{random_suffix()}"
-
-
+@pytest.mark.non_postgres_tests
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
 def test_api_returns_allocation_and_201() -> None:
@@ -68,6 +28,7 @@ def test_api_returns_allocation_and_201() -> None:
     assert r.json()["batchref"] == early_batch
 
 
+@pytest.mark.non_postgres_tests
 @pytest.mark.usefixtures("postgres_db")
 @pytest.mark.usefixtures("restart_api")
 def test_bad_call_returns_400_and_error_message() -> None:

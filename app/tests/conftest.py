@@ -17,7 +17,9 @@ from app.adapters.orm import metadata, start_mappers
 @pytest.fixture
 def in_memory_db() -> Engine:
     """Create an engine for sqlite in memory db."""
-    engine = create_engine("sqlite:///:memory:")
+    engine = create_engine(
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}
+    )
     metadata.create_all(engine)
     return engine
 
@@ -75,18 +77,17 @@ def postgres_db() -> Engine:
 
 
 @pytest.fixture
-def postgres_session(postgres_db: Engine) -> Generator[Session, None, None]:
-    """Fixture for creating a session given an engine. Includes setup and teardown.
-
-    Args:
-        postgres_db: callable that returns a sql engine
-
-    Returns:
-        Portgres session
-    """
+def postgres_session_factory(
+    postgres_db: Engine,
+) -> Generator[Callable[[], Session], None, None]:
     start_mappers()
-    yield sessionmaker(bind=postgres_db)()
+    yield sessionmaker(bind=postgres_db)
     clear_mappers()
+
+
+@pytest.fixture
+def postgres_session(postgres_session_factory: Callable[[], Session]) -> Session:
+    return postgres_session_factory()
 
 
 @pytest.fixture

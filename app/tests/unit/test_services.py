@@ -1,5 +1,5 @@
 """Functions for testing the service layer."""
-from typing import List
+from typing import List, Optional
 
 import pytest
 
@@ -12,40 +12,32 @@ from app.adapters.repository import AbstractRepository
 class FakeRepository(AbstractRepository):
     """Fake for the Repository object."""
 
-    def __init__(self, batches: List[model.Batch]):
+    def __init__(self, products: List[model.Product]):
         """Init function.
 
         Args:
-            batches: List of Batch entity models.
+            products: List of Batch entity models.
         """
-        self._batches = set(batches)
+        self._products = set(products)
 
-    def add(self, batch: model.Batch) -> None:
-        """Add a batch to the fake repository.
+    def add(self, product: model.Product) -> None:
+        """Add a product to the fake repository.
 
         Args:
-            batch: a Batch entity model
+            product: a product aggregate model
         """
-        self._batches.add(batch)
+        self._products.add(product)
 
-    def get(self, reference: str) -> model.Batch:
-        """Get batches from the repository that match the given reference.
+    def get(self, sku: str) -> Optional[model.Product]:
+        """Get product from the repository that matches the given sku.
 
         Args:
-            reference: str that identifies a batch.
+            sku: sku that identifies a product.
 
         Returns:
-            A generator with all the batches that match the reference
+            The product that matches the sku
         """
-        return next(b for b in self._batches if b.reference == reference)
-
-    def list(self) -> List[model.Batch]:
-        """Returns a list of batches from the repository.
-
-        Returns:
-            List of batches in the repository
-        """
-        return list(self._batches)
+        return next((p for p in self._products if p.sku == sku), None)
 
 
 class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
@@ -53,7 +45,7 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
 
     def __init__(self) -> None:
         """Init function."""
-        self.batches = FakeRepository([])
+        self.products = FakeRepository([])
         self.committed = False
 
     def commit(self) -> None:
@@ -75,11 +67,22 @@ class FakeSession:
         self.committed = True
 
 
-def test_add_batch() -> None:
+def test_add_batch_for_new_product() -> None:
     uow = FakeUnitOfWork()
     services.add_batch("b1", "CRUNCHY-ARMCHAIR", 100, None, uow)
-    assert uow.batches.get("b1") is not None
+    assert uow.products.get("CRUNCHY-ARMCHAIR") is not None
     assert uow.committed
+
+
+def test_add_batch_for_existing_product() -> None:
+    uow = FakeUnitOfWork()
+    services.add_batch("b1", "CRUNCHY-ARMCHAIR", 100, None, uow)
+    services.add_batch("b2", "CRUNCHY-ARMCHAIR", 99, None, uow)
+    product = uow.products.get("CRUNCHY-ARMCHAIR")
+    if product:
+        assert "b2" in [b.reference for b in product.batches]
+    else:
+        assert False
 
 
 def test_allocate_returns_allocation() -> None:

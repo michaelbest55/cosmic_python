@@ -16,14 +16,19 @@ from app.adapters import repository
 DEFAULT_SESSION_FACTORY = sessionmaker(
     bind=create_engine(
         config.get_postgres_uri(),
-    )
+        isolation_level="REPEATABLE READ",
+    ),
 )
 
 
 class AbstractUnitOfWork(abc.ABC):
     """Abstract class defintion, children must have commit and rollback methods."""
 
-    batches: repository.AbstractRepository
+    products: repository.AbstractRepository
+
+    def __getattr__(self, name: Any) -> Any:
+        """This is used to overload the enter method of SqlAlchemy."""
+        pass
 
     def __enter__(self, *args: Any) -> AbstractUnitOfWork:
         """How to use the class in a context manager."""
@@ -61,7 +66,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
     def __enter__(self, *args: Any) -> AbstractUnitOfWork:
         """Return a unit of work subclass when entering a context manager."""
         self.session = self.session_factory()
-        self.batches = repository.SqlAlchemyRepository(self.session)
+        self.products = repository.SqlAlchemyRepository(self.session)
         return super().__enter__()
 
     def __exit__(self, *args: Any) -> None:

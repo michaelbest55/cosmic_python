@@ -4,7 +4,41 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Iterable, Optional, Set
+from typing import Any, Iterable, List, Optional, Set
+
+
+class Product:
+    """Aggregate model."""
+
+    def __init__(self, sku: str, batches: List[Batch], version_number: int = 0):
+        """Initialization of a product.
+
+        Args:
+            sku: str with the stock keeping unit of the prodcut
+            batches: list of batches of an sku
+            version_number: integer that helps on deceding which
+            transaction should be commited to a database
+        """
+        self.sku = sku
+        self.batches = batches
+        self.version_number = version_number
+
+    def allocate(self, line: OrderLine) -> str:
+        """Allocate an orderline to a product.
+
+        Args:
+            line: an order line to allocate to a product
+
+        Returns:
+            reference of the batch to which the line was allocated to.
+        """
+        try:
+            batch = next(b for b in sorted(self.batches) if b.can_allocate(line))
+            batch.allocate(line)
+            self.version_number += 1
+            return batch.reference
+        except StopIteration:
+            raise OutOfStock(f"Out of stock for sku {line.sku}")
 
 
 @dataclass(unsafe_hash=True)
