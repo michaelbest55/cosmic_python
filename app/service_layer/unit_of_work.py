@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import app.config as config
 from app.adapters import repository
+from app.service_layer import message_bus
 
 DEFAULT_SESSION_FACTORY = sessionmaker(
     bind=create_engine(
@@ -26,9 +27,9 @@ class AbstractUnitOfWork(abc.ABC):
 
     products: repository.AbstractRepository
 
-    def __getattr__(self, name: Any) -> Any:
-        """This is used to overload the enter method of SqlAlchemy."""
-        pass
+    # def __getattr__(self, name: Any) -> Any:
+    #     """This is used to overload the enter method of SqlAlchemy."""
+    #     pass
 
     def __enter__(self, *args: Any) -> AbstractUnitOfWork:
         """How to use the class in a context manager."""
@@ -38,10 +39,22 @@ class AbstractUnitOfWork(abc.ABC):
         """What to do when exiting a context."""
         self.rollback()
 
-    @abc.abstractmethod
     def commit(self) -> None:
+        """How to commit work and publish events."""
+        self._commit()
+        self.publish_events()
+
+    @abc.abstractmethod
+    def _commit(self) -> None:
         """How to commit work to the persistent storage."""
         raise NotImplementedError
+
+    def publish_events(self) -> None:
+        """Event handler."""
+        for product in self.products.seen:
+            while product.events:
+                event = product.events.pop(0)
+                message_bus.handle(event)
 
     @abc.abstractmethod
     def rollback(self) -> None:
@@ -74,7 +87,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
         super().__exit__(*args)
         self.session.close()
 
-    def commit(self) -> None:
+    def _commit(self) -> None:
         """Commit the work to the sqlalchemy session."""
         self.session.commit()
 

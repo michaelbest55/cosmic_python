@@ -150,4 +150,4 @@ def test_concurrent_updates_to_version_are_not_allowed(
     )
     assert orders.rowcount == 1
     with unit_of_work.SqlAlchemyUnitOfWork() as uow:
-        uow.session.execute("select 1")
+        cast(unit_of_work.SqlAlchemyUnitOfWork, uow).session.execute("select 1")

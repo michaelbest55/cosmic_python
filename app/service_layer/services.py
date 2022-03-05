@@ -62,7 +62,7 @@ def allocate(
     sku: str,
     qty: int,
     uow: unit_of_work.AbstractUnitOfWork,
-) -> str:
+) -> Optional[str]:
     """Allocate an orderline to an appropriate batch.
 
     Args:

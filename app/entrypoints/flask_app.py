@@ -1,6 +1,6 @@
 """Module for creating the flask app."""
 from datetime import datetime
-from typing import Dict, Tuple, cast
+from typing import Dict, Optional, Tuple, cast
 
 from flask import Flask, request
 from sqlalchemy import create_engine
@@ -8,7 +8,6 @@ from sqlalchemy.orm import sessionmaker
 
 import app.adapters.orm as orm
 import app.config as config
-import app.domain.model as model
 import app.service_layer.services as services
 from app.service_layer import unit_of_work
 
@@ -18,7 +17,7 @@ app = Flask(__name__)
 
 
 @app.route("/allocate", methods=["POST"])
-def allocate_endpoint() -> Tuple[Dict[str, str], int]:
+def allocate_endpoint() -> Tuple[Dict[str, Optional[str]], int]:
     """Endpoint for allocating an orderline to a batch."""
     request_params_dict = cast(dict, request.json)
     try:
@@ -37,7 +36,7 @@ def allocate_endpoint() -> Tuple[Dict[str, str], int]:
         batchref = services.allocate(
             orderid, sku, qty, unit_of_work.SqlAlchemyUnitOfWork()
         )
-    except (model.OutOfStock, services.InvalidSku) as e:
+    except (services.InvalidSku) as e:
         return {"message": str(e)}, 400
 
     return {"batchref": batchref}, 201

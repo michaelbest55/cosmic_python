@@ -1,5 +1,5 @@
 """Functions for testing the service layer."""
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import pytest
 
@@ -18,9 +18,10 @@ class FakeRepository(AbstractRepository):
         Args:
             products: List of Batch entity models.
         """
+        super().__init__()
         self._products = set(products)
 
-    def add(self, product: model.Product) -> None:
+    def _add(self, product: model.Product) -> None:
         """Add a product to the fake repository.
 
         Args:
@@ -28,7 +29,7 @@ class FakeRepository(AbstractRepository):
         """
         self._products.add(product)
 
-    def get(self, sku: str) -> Optional[model.Product]:
+    def _get(self, sku: str) -> Optional[model.Product]:
         """Get product from the repository that matches the given sku.
 
         Args:
@@ -39,6 +40,14 @@ class FakeRepository(AbstractRepository):
         """
         return next((p for p in self._products if p.sku == sku), None)
 
+    def list(self) -> Set[model.Product]:
+        """Get the set of products associated to a repo.
+
+        Returns:
+            The set of products.
+        """
+        return self._products
+
 
 class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
     """Fake unit of work for testing."""
@@ -48,7 +57,7 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
         self.products = FakeRepository([])
         self.committed = False
 
-    def commit(self) -> None:
+    def _commit(self) -> None:
         """How to commit."""
         self.committed = True
 

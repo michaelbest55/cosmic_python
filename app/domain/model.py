@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Iterable, List, Optional, Set
+from typing import Any, List, Optional, Set
+
+from app.domain import events
 
 
 class Product:
@@ -22,8 +24,9 @@ class Product:
         self.sku = sku
         self.batches = batches
         self.version_number = version_number
+        self.events: List[events.Event] = []
 
-    def allocate(self, line: OrderLine) -> str:
+    def allocate(self, line: OrderLine) -> Optional[str]:
         """Allocate an orderline to a product.
 
         Args:
@@ -38,7 +41,8 @@ class Product:
             self.version_number += 1
             return batch.reference
         except StopIteration:
-            raise OutOfStock(f"Out of stock for sku {line.sku}")
+            self.events.append(events.OutOfStock(line.sku))
+            return None
 
 
 @dataclass(unsafe_hash=True)
@@ -141,21 +145,3 @@ class Batch:
         Returns: result
         """
         return self._purchased_quantity - self.allocated_quantity
-
-
-class OutOfStock(Exception):
-    """Domain exception when no stock is left in a batch for a give order line."""
-
-    pass
-
-
-def allocate(line: OrderLine, list_of_batches: Iterable[Batch]) -> str:
-    """Domain service function for allocating a batch for an order line."""
-    try:
-        selected_batch = next(
-            b for b in sorted(list_of_batches) if b.can_allocate(line)
-        )
-        selected_batch.allocate(line)
-        return selected_batch.reference
-    except StopIteration:
-        raise OutOfStock(f"Out of stock for sku {line.sku}")

@@ -1,6 +1,8 @@
 """Setup the mapping between the domain models and the orm objects."""
 
-from sqlalchemy import Column, Date, ForeignKey, Integer, MetaData, String, Table
+from typing import Any
+
+from sqlalchemy import Column, Date, ForeignKey, Integer, MetaData, String, Table, event
 from sqlalchemy.orm import mapper, relationship
 
 import app.domain.model as model
@@ -59,3 +61,9 @@ def start_mappers() -> None:
     mapper(
         model.Product, products, properties={"batches": relationship(batches_mapper)}
     )
+
+
+@event.listens_for(model.Product, "load")
+def receive_load(product: model.Product, _: Any) -> None:
+    """When the Product is loaded, events are added to the orm object."""
+    product.events = []

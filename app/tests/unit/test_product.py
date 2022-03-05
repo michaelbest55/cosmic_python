@@ -1,9 +1,8 @@
 """Tests for development."""
 from datetime import date, timedelta
 
-import pytest
-
-from app.domain.model import Batch, OrderLine, OutOfStock, Product
+from app.domain import events
+from app.domain.model import Batch, OrderLine, Product
 
 
 def test_prefers_earlier_batches() -> None:
@@ -32,15 +31,14 @@ def test_allocate_returns_allocated_batch_ref() -> None:
     assert batch_ref == test_batch_yesterday.reference
 
 
-def test_raises_out_of_stock_exception() -> None:
-    test_batch = Batch("batch-123", "RETRO-CLOCK", 20, eta=date.today())
-    test_line = OrderLine("oref", "RETRO-CLOCK", 20)
-    product = Product("RETRO-CLOCK", [test_batch])
-    product.allocate(test_line)
-    test_line_2 = OrderLine("order-2", "RETRO-CLOCK", 20)
+def test_records_out_of_stock_event_if_cannot_allocate() -> None:
+    batch = Batch("batch1", "SMALL-FORK", 10, eta=date.today())
+    product = Product(sku="SMALL-FORK", batches=[batch])
+    product.allocate(OrderLine("order1", "SMALL-FORK", 10))
 
-    with pytest.raises(OutOfStock, match="RETRO-CLOCK"):
-        product.allocate(test_line_2)
+    allocation = product.allocate(OrderLine("order2", "SMALL-FORK", 1))
+    assert product.events[-1] == events.OutOfStock(sku="SMALL-FORK")
+    assert allocation is None
 
 
 def test_allocation_to_warehouse_stock_prefered_to_shipment_batch() -> None:
