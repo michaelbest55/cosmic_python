@@ -5,14 +5,14 @@ This module is coupled to the repository.
 from __future__ import annotations
 
 import abc
-from typing import Any, Callable
+from typing import Any, Callable, Generator, Union
 
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import app.config as config
 from app.adapters import repository
-from app.service_layer import message_bus
+from app.domain import commands, events
 
 DEFAULT_SESSION_FACTORY = sessionmaker(
     bind=create_engine(
@@ -21,15 +21,13 @@ DEFAULT_SESSION_FACTORY = sessionmaker(
     ),
 )
 
+Message = Union[commands.Command, events.Event]
+
 
 class AbstractUnitOfWork(abc.ABC):
     """Abstract class defintion, children must have commit and rollback methods."""
 
     products: repository.AbstractRepository
-
-    # def __getattr__(self, name: Any) -> Any:
-    #     """This is used to overload the enter method of SqlAlchemy."""
-    #     pass
 
     def __enter__(self, *args: Any) -> AbstractUnitOfWork:
         """How to use the class in a context manager."""
@@ -42,19 +40,17 @@ class AbstractUnitOfWork(abc.ABC):
     def commit(self) -> None:
         """How to commit work and publish events."""
         self._commit()
-        self.publish_events()
 
     @abc.abstractmethod
     def _commit(self) -> None:
         """How to commit work to the persistent storage."""
         raise NotImplementedError
 
-    def publish_events(self) -> None:
+    def collect_new_events(self) -> Generator[Message, None, None]:
         """Event handler."""
         for product in self.products.seen:
             while product.events:
-                event = product.events.pop(0)
-                message_bus.handle(event)
+                yield product.events.pop(0)
 
     @abc.abstractmethod
     def rollback(self) -> None:

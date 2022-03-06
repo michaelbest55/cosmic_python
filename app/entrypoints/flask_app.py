@@ -8,8 +8,9 @@ from sqlalchemy.orm import sessionmaker
 
 import app.adapters.orm as orm
 import app.config as config
-import app.service_layer.services as services
-from app.service_layer import unit_of_work
+import app.service_layer.handlers as handlers
+from app.domain import commands
+from app.service_layer import message_bus, unit_of_work
 
 orm.start_mappers()
 get_session = sessionmaker(bind=create_engine(config.get_postgres_uri()))
@@ -24,6 +25,7 @@ def allocate_endpoint() -> Tuple[Dict[str, Optional[str]], int]:
         orderid = request_params_dict["orderid"]
         sku = request_params_dict["sku"]
         qty = request_params_dict["qty"]
+        event = commands.Allocate(orderid, sku, qty)
     except KeyError as e:
         return {"message": f"Missing the following input keys: {e}"}, 400
     except TypeError as e:
@@ -33,10 +35,9 @@ def allocate_endpoint() -> Tuple[Dict[str, Optional[str]], int]:
         }, 400
 
     try:
-        batchref = services.allocate(
-            orderid, sku, qty, unit_of_work.SqlAlchemyUnitOfWork()
-        )
-    except (services.InvalidSku) as e:
+        results = message_bus.handle(event, unit_of_work.SqlAlchemyUnitOfWork())
+        batchref = results.pop(0)
+    except (handlers.InvalidSku) as e:
         return {"message": str(e)}, 400
 
     return {"batchref": batchref}, 201
@@ -56,6 +57,7 @@ def add_batch() -> Tuple[Dict[str, str], int]:
         eta = request_params_dict["eta"]
         if eta is not None:
             eta = datetime.fromisoformat(eta).date()
+        event = commands.CreateBatch(ref, sku, qty, eta)
     except KeyError as e:
         return {"message": f"Missing the following input keys: {e}"}, 400
     except TypeError as e:
@@ -64,11 +66,5 @@ def add_batch() -> Tuple[Dict[str, str], int]:
             f"\n Please try again ith different parameters."
         }, 400
 
-    services.add_batch(
-        ref,
-        sku,
-        qty,
-        eta,
-        unit_of_work.SqlAlchemyUnitOfWork(),
-    )
+    message_bus.handle(event, unit_of_work.SqlAlchemyUnitOfWork())
     return {"message": "OK"}, 201

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, List, Optional, Set
+from typing import Any, List, Optional, Set, Union
 
-from app.domain import events
+from app.domain import commands, events
+
+Message = Union[commands.Command, events.Event]
 
 
 class Product:
@@ -24,7 +26,7 @@ class Product:
         self.sku = sku
         self.batches = batches
         self.version_number = version_number
-        self.events: List[events.Event] = []
+        self.events: List[Message] = []
 
     def allocate(self, line: OrderLine) -> Optional[str]:
         """Allocate an orderline to a product.
@@ -43,6 +45,20 @@ class Product:
         except StopIteration:
             self.events.append(events.OutOfStock(line.sku))
             return None
+
+    def change_batch_quantity(self, ref: str, qty: int) -> None:
+        """Change the quantity in a batch.
+
+        Args:
+            ref: reference of the batch
+            qty: new quantity in the batch
+
+        """
+        batch = next(b for b in self.batches if b.reference == ref)
+        batch._purchased_quantity = qty
+        while batch.available_quantity < 0:
+            line = batch.deallocate_one()
+            self.events.append(commands.Allocate(line.order_id, line.sku, line.qty))
 
 
 @dataclass(unsafe_hash=True)
@@ -128,6 +144,14 @@ class Batch:
         """
         if line in self._allocations:
             self._allocations.remove(line)
+
+    def deallocate_one(self) -> OrderLine:
+        """Deallocate the first order line in a batch.
+
+        Returns:
+            the deallocated orderline
+        """
+        return self._allocations.pop()
 
     @property
     def allocated_quantity(self) -> int:

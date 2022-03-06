@@ -9,6 +9,7 @@ python = "3.8.10"
 SQLAlchemy = "^1.4.31"
 Flask = "^2.0.3"
 psycopg2-binary = "^2.9.3"
+tenacity = "^8.0.1"
 
 
 [tool.poetry.dev-dependencies]

@@ -1,10 +1,11 @@
 """Implementations of the repositories for the domain."""
 import abc
-from typing import Optional, Set
+from typing import Optional, Set, cast
 
 from sqlalchemy.orm.session import Session
 
 import app.domain.model as model
+from app.adapters import orm
 
 
 class AbstractRepository(abc.ABC):
@@ -34,6 +35,20 @@ class AbstractRepository(abc.ABC):
             self.seen.add(product)
         return product
 
+    def get_by_batchref(self, batchref: str) -> Optional[model.Product]:
+        """Get a product based on the given batchref.
+
+        Args:
+            batchref: str with the ref of the batch of a product
+
+        Returns:
+            Product if it exists
+        """
+        product = self._get_by_batchref(batchref)
+        if product:
+            self.seen.add(product)
+        return product
+
     @abc.abstractmethod
     def _add(self, product: model.Product) -> None:
         """Add a product to the repository.
@@ -49,6 +64,18 @@ class AbstractRepository(abc.ABC):
 
         Args:
             sku: sku of the product to retrieve
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _get_by_batchref(self, batchref: str) -> Optional[model.Product]:
+        """Get a product from a repository by using a batch reference.
+
+        Args:
+            batchref: how to identify the batch
+
+        Returns:
+            product associated to a batch
         """
         raise NotImplementedError
 
@@ -83,3 +110,20 @@ class SqlAlchemyRepository(AbstractRepository):
             Product that is chosen
         """
         return self.session.query(model.Product).filter_by(sku=sku).first()
+
+    def _get_by_batchref(self, batchref: str) -> Optional[model.Product]:
+        """Get a product from a repository by using a batch reference.
+
+        Args:
+            batchref: how to identify the batch
+
+        Returns:
+            product associated to a batch
+        """
+        return cast(
+            Optional[model.Product],
+            self.session.query(model.Product)
+            .join(model.Batch)
+            .filter(orm.batches.c.reference == batchref)
+            .first(),
+        )
